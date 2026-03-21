@@ -99,7 +99,7 @@ st.dataframe(df.head(10))
 import os
 from PIL import Image
 
-st.subheader("📊 Fairness Analysis Charts")
+st.subheader(" Fairness Analysis Charts")
 
 chart_tab1, chart_tab2, chart_tab3 = st.tabs([
     "Demographic Parity",
@@ -127,3 +127,35 @@ with chart_tab3:
         st.caption("Gap comparison before and after debiasing. Orange line = fairness threshold.")
     else:
         st.info("Run src/run_viz.py to generate this chart.")
+
+
+st.subheader(" Causal Model Comparison")
+
+# Load comparison results if available
+import os
+if os.path.exists("outputs/model_comparison.csv"):
+    comp_df = pd.read_csv("outputs/model_comparison.csv")
+    st.dataframe(comp_df, use_container_width=True)
+
+    # Highlight best model
+    best_fairness = comp_df.loc[comp_df["Parity Gap"].idxmin(), "Model"]
+    best_accuracy = comp_df.loc[comp_df["Accuracy"].idxmax(),   "Model"]
+    st.info(f" Fairest model: **{best_fairness}** | 🎯 Most accurate: **{best_accuracy}**")
+
+col_a, col_b = st.columns(2)
+with col_a:
+    if os.path.exists("outputs/model_comparison.png"):
+        st.image("outputs/model_comparison.png", use_column_width=True)
+
+with col_b:
+    if os.path.exists("outputs/fairness_accuracy_tradeoff.png"):
+        st.image("outputs/fairness_accuracy_tradeoff.png", use_column_width=True)
+        st.caption("Bottom-left = fair AND accurate. Goal is to move models toward that corner.")
+
+# Model selector for live prediction
+st.subheader(" Choose Model for Prediction")
+selected_model = st.selectbox(
+    "Select model to use for predictions above",
+    ["Fair (Reweighted)", "Causal 1 (No Sex)", "Causal 2 (No Proxies)"]
+)
+st.caption(f"Currently using: **{selected_model}**")
