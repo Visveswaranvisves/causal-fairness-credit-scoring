@@ -72,9 +72,9 @@ with col1:
         probability = model.predict_proba(input_enc)[0][1]
 
         if prediction == 1:
-            st.success(f"✅ Credit Approved (High Amount Risk: {probability:.1%})")
+            st.success(f" Credit Approved (High Amount Risk: {probability:.1%})")
         else:
-            st.error(f"❌ Credit Denied (Risk Score: {probability:.1%})")
+            st.error(f" Credit Denied (Risk Score: {probability:.1%})")
 
         st.metric("Risk Score", f"{probability:.2%}")
 
@@ -90,7 +90,7 @@ with col2:
 
     st.metric("Male Approval Rate",   f"{male_rate:.1%}")
     st.metric("Female Approval Rate", f"{female_rate:.1%}")
-    st.metric("Parity Gap",           f"{gap:.4f}", delta=f"{gap:.4f}" if gap > 0.03 else "Low ✅")
+    st.metric("Parity Gap",           f"{gap:.4f}", delta=f"{gap:.4f}" if gap > 0.03 else "Low ")
 
 # ── Dataset overview ─────────────────────────────────────────
 st.subheader("Dataset Overview")
