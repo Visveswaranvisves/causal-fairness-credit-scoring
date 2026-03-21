@@ -1,0 +1,5 @@
+Model,Accuracy,Parity Gap,EO Gap,Bias Reduction %,Accuracy Drop %
+Baseline,1.0,0.13690476190476192,0.0,0.0,0.0
+Fair (Reweighted),1.0,0.13690476190476192,0.0,0.0,0.0
+Causal 1 (No Sex),1.0,0.13690476190476192,0.0,0.0,0.0
+Causal 2 (No Proxies),1.0,0.13690476190476192,0.0,0.0,0.0

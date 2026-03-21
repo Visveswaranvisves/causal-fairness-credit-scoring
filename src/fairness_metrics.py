@@ -10,62 +10,44 @@ def demographic_parity(y_pred, sensitive_feature):
     Checks if approval rates are equal across groups.
     Ideal: rates should be close to equal.
     """
+    y_pred = np.array([str(p) for p in y_pred])
+    sensitive_feature = np.array([str(s) for s in sensitive_feature])
+    
     df = pd.DataFrame({
         "prediction": y_pred,
         "group":      sensitive_feature
     })
-    rates = df.groupby("group")["prediction"].mean()
-    gap   = abs(rates.max() - rates.min())
+    rates = df.groupby("group")["prediction"].apply(
+        lambda x: (x == "good").mean()
+    )
+    gap = abs(rates.max() - rates.min())
 
     print("\n===== DEMOGRAPHIC PARITY =====")
     for group, rate in rates.items():
         print(f"  {group}: {rate:.4f}")
-    print(f"  Parity Gap: {gap:.4f}")
-    if gap > 0.05:
-        print("  ⚠️  BIAS DETECTED — gap exceeds 0.05 threshold")
-    else:
-        print("  ✅  Gap within acceptable range")
+    print(f"  Gap: {gap:.4f}")
 
     return rates, gap
 
 
 # ── Metric 2: Equal Opportunity ───────────────────────────────
 def equal_opportunity(y_true, y_pred, sensitive_feature):
-    """
-    Checks if True Positive Rate (TPR) is equal across groups.
-    Ideal: TPR should be similar for all groups.
-    """
+    y_true = np.array([str(v) for v in y_true])
+    y_pred = np.array([str(p) for p in y_pred])
+    sensitive_feature = np.array([str(s) for s in sensitive_feature])
+    
     df = pd.DataFrame({
-        "y_true": y_true,
-        "y_pred": y_pred,
-        "group":  sensitive_feature
+        "actual":     y_true,
+        "prediction": y_pred,
+        "group":      sensitive_feature
     })
-
-    results = {}
-    print("\n===== EQUAL OPPORTUNITY (True Positive Rate) =====")
-
+    tpr = {}
     for group in df["group"].unique():
-        subset = df[df["group"] == group]
-        try:
-            tn, fp, fn, tp = confusion_matrix(
-                subset["y_true"], subset["y_pred"]
-            ).ravel()
-            tpr = tp / (tp + fn) if (tp + fn) > 0 else 0
-        except ValueError:
-            tpr = 0
-        results[group] = tpr
-        print(f"  {group}: TPR = {tpr:.4f}")
-
-    tpr_values = list(results.values())
-    gap = abs(max(tpr_values) - min(tpr_values))
-    print(f"  TPR Gap: {gap:.4f}")
-    if gap > 0.05:
-        print("  ⚠️  BIAS DETECTED — TPR gap exceeds 0.05 threshold")
-    else:
-        print("  ✅  TPR within acceptable range")
-
-    return results, gap
-
+        subset   = df[df["group"] == group]
+        positive = subset[subset["actual"] == "good"]
+        tpr[group] = (positive["prediction"] == "good").mean() if len(positive) > 0 else 0.0
+    gap = abs(max(tpr.values()) - min(tpr.values()))
+    return tpr, gap
 
 # ── Metric 3: Predictive Parity ───────────────────────────────
 def predictive_parity(y_true, y_pred, sensitive_feature):
