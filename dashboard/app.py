@@ -2,17 +2,33 @@ import streamlit as st
 import pandas as pd
 import numpy as np
 import joblib
-import shap
-from PIL import Image
-# ── Page config ──────────────────────────────────────────────
-st.set_page_config(page_title="Credit Fairness Dashboard", layout="wide")
-st.title("⚖️ Causal Fairness-Aware Credit Scoring")
-st.markdown("Predict credit risk and see fairness analysis in real time.")
+import os
 
-# ── Load model ───────────────────────────────────────────────
+st.set_page_config(
+    page_title="Causal Fairness Credit Scoring",
+    page_icon="",
+    layout="wide"
+)
+
+# ── Header ────────────────────────────────────────────────────
+st.title(" Causal Fairness-Aware Credit Scoring")
+st.markdown("An end-to-end Responsible AI system — prediction, fairness "
+            "measurement, and causal bias mitigation.")
+st.divider()
+
+# ── Load assets ───────────────────────────────────────────────
 @st.cache_resource
-def load_model():
-    return joblib.load("models/fair_model.pkl")
+def load_models():
+    models = {}
+    paths  = {
+        "Fair (Reweighted)":     "models/fair_model.pkl",
+        "Causal 1 (No Sex)":     "models/causal_model_1.pkl",
+        "Causal 2 (No Proxies)": "models/causal_model_2.pkl",
+    }
+    for name, path in paths.items():
+        if os.path.exists(path):
+            models[name] = joblib.load(path)
+    return models
 
 @st.cache_data
 def load_data():
@@ -22,140 +38,131 @@ def load_data():
     df["target"] = (df["Credit amount"] > 2000).astype(int)
     return df
 
-model = load_model()
-df    = load_data()
+models = load_models()
+df     = load_data()
 
-# ── Sidebar Inputs ───────────────────────────────────────────
-st.sidebar.header("Enter Applicant Details")
+# ── Tabs ──────────────────────────────────────────────────────
+tab1, tab2, tab3 = st.tabs([" Live Prediction", " Fairness Analysis", " Model Comparison"])
 
-age            = st.sidebar.slider("Age", 18, 75, 30)
-credit_amount  = st.sidebar.number_input("Credit Amount (€)", 100, 20000, 2500)
-duration       = st.sidebar.slider("Loan Duration (months)", 6, 72, 24)
-sex            = st.sidebar.selectbox("Sex", ["male", "female"])
-job            = st.sidebar.selectbox("Job Level", [0, 1, 2, 3])
-housing        = st.sidebar.selectbox("Housing", ["own", "free", "rent"])
-saving_account = st.sidebar.selectbox("Saving Accounts", ["little", "moderate", "quite rich", "rich"])
-checking       = st.sidebar.selectbox("Checking Account", ["little", "moderate", "rich"])
-purpose        = st.sidebar.selectbox("Purpose", ["car", "furniture/equipment", "radio/TV", "education", "business"])
+# ════════════════════════════════════════════════════════
+# TAB 1 — Live Prediction
+# ════════════════════════════════════════════════════════
+with tab1:
+    st.subheader("Predict Credit Risk")
+    col_input, col_result = st.columns([1, 1])
 
-# ── Build input row ──────────────────────────────────────────
-input_dict = {
-    "Age":              age,
-    "Sex":              sex,
-    "Job":              job,
-    "Housing":          housing,
-    "Saving accounts":  saving_account,
-    "Checking account": checking,
-    "Credit amount":    credit_amount,
-    "Duration":         duration,
-    "Purpose":          purpose,
-}
+    with col_input:
+        age            = st.slider("Age", 18, 75, 30)
+        credit_amount  = st.number_input("Credit Amount (€)", 100, 20000, 2500)
+        duration       = st.slider("Loan Duration (months)", 6, 72, 24)
+        sex            = st.selectbox("Sex", ["male", "female"])
+        job            = st.selectbox("Job Level", [0, 1, 2, 3])
+        housing        = st.selectbox("Housing", ["own", "free", "rent"])
+        saving_account = st.selectbox("Saving Accounts",
+                                      ["little", "moderate", "quite rich", "rich"])
+        checking       = st.selectbox("Checking Account", ["little", "moderate", "rich"])
+        purpose        = st.selectbox("Purpose",
+                                      ["car", "furniture/equipment",
+                                       "radio/TV", "education", "business"])
+        model_choice   = st.selectbox("Model to use", list(models.keys()))
 
-input_df = pd.DataFrame([input_dict])
+    with col_result:
+        if st.button("Run Prediction", type="primary"):
+            input_dict = {
+                "Age": age, "Sex": sex, "Job": job,
+                "Housing": housing, "Saving accounts": saving_account,
+                "Checking account": checking, "Credit amount": credit_amount,
+                "Duration": duration, "Purpose": purpose
+            }
+            input_df  = pd.DataFrame([input_dict])
+            full_data = pd.concat([df.drop("target", axis=1), input_df],
+                                  ignore_index=True)
+            full_enc  = pd.get_dummies(full_data, drop_first=True)
+            input_enc = full_enc.iloc[[-1]]
 
-# ── Encode to match training ──────────────────────────────────
-full_df    = pd.concat([df.drop("target", axis=1), input_df], ignore_index=True)
-full_enc   = pd.get_dummies(full_df, drop_first=True)
-input_enc  = full_enc.iloc[[-1]]
+            train_enc = pd.get_dummies(df.drop("target", axis=1), drop_first=True)
+            input_enc = input_enc.reindex(columns=train_enc.columns, fill_value=0)
 
-# Align columns with model
-train_enc = pd.get_dummies(df.drop("target", axis=1), drop_first=True)
-input_enc = input_enc.reindex(columns=train_enc.columns, fill_value=0)
+            selected = models[model_choice]
 
-# ── Predict ───────────────────────────────────────────────────
-col1, col2 = st.columns(2)
+            # Drop proxy cols for causal models
+            if "Causal 1" in model_choice:
+                drop_cols = [c for c in input_enc.columns if "Sex" in c]
+                input_enc = input_enc.drop(columns=drop_cols, errors="ignore")
+            elif "Causal 2" in model_choice:
+                proxy_kw  = ["Sex", "Job", "Housing", "Saving"]
+                drop_cols = [c for c in input_enc.columns
+                             if any(kw.lower() in c.lower() for kw in proxy_kw)]
+                input_enc = input_enc.drop(columns=drop_cols, errors="ignore")
 
-with col1:
-    st.subheader("Prediction")
-    if st.button("Run Prediction"):
-        prediction = model.predict(input_enc)[0]
-        probability = model.predict_proba(input_enc)[0][1]
+            try:
+                pred  = selected.predict(input_enc)[0]
+                prob  = selected.predict_proba(input_enc)[0][1]
+                st.metric("Risk Score", f"{prob:.2%}")
+                if pred == 1:
+                    st.success(" High Credit Amount Profile — Likely Approved")
+                else:
+                    st.error(" Low Credit Amount Profile — May Be Denied")
 
-        if prediction == 1:
-            st.success(f" Credit Approved (High Amount Risk: {probability:.1%})")
-        else:
-            st.error(f" Credit Denied (Risk Score: {probability:.1%})")
+                st.info(f"Model used: **{model_choice}**")
+            except Exception as e:
+                st.error(f"Prediction error: {e}")
 
-        st.metric("Risk Score", f"{probability:.2%}")
+# ════════════════════════════════════════════════════════
+# TAB 2 — Fairness Analysis
+# ════════════════════════════════════════════════════════
+with tab2:
+    st.subheader("Fairness Metrics Across Gender Groups")
 
-with col2:
-    st.subheader("Dataset Fairness Summary")
-    train_enc_full = train_enc.copy()
-    train_enc_full["target"] = df["target"].values
-    train_enc_full["Sex"]    = df["Sex"].values
-
-    male_rate   = train_enc_full[train_enc_full["Sex"] == "male"]["target"].mean()
-    female_rate = train_enc_full[train_enc_full["Sex"] == "female"]["target"].mean()
+    male_rate   = df[df["Sex"] == "male"]["target"].mean()
+    female_rate = df[df["Sex"] == "female"]["target"].mean()
     gap         = abs(male_rate - female_rate)
 
-    st.metric("Male Approval Rate",   f"{male_rate:.1%}")
-    st.metric("Female Approval Rate", f"{female_rate:.1%}")
-    st.metric("Parity Gap",           f"{gap:.4f}", delta=f"{gap:.4f}" if gap > 0.03 else "Low ")
+    m1, m2, m3 = st.columns(3)
+    m1.metric("Male Approval Rate",   f"{male_rate:.1%}")
+    m2.metric("Female Approval Rate", f"{female_rate:.1%}")
+    m3.metric("Parity Gap", f"{gap:.4f}",
+              delta="High " if gap > 0.05 else "Low ")
 
-# ── Dataset overview ─────────────────────────────────────────
-st.subheader("Dataset Overview")
-st.dataframe(df.head(10))
+    chart_col1, chart_col2 = st.columns(2)
+    with chart_col1:
+        if os.path.exists("outputs/demographic_parity.png"):
+            st.image("outputs/demographic_parity.png", use_column_width=True)
+    with chart_col2:
+        if os.path.exists("outputs/equal_opportunity.png"):
+            st.image("outputs/equal_opportunity.png", use_column_width=True)
 
-import os
-from PIL import Image
-
-st.subheader(" Fairness Analysis Charts")
-
-chart_tab1, chart_tab2, chart_tab3 = st.tabs([
-    "Demographic Parity",
-    "Equal Opportunity",
-    "Bias Summary"
-])
-
-with chart_tab1:
-    if os.path.exists("outputs/demographic_parity.png"):
-        st.image("outputs/demographic_parity.png", use_column_width=True)
-        st.caption("Approval rates across gender groups. Ideal: bars at equal height.")
-    else:
-        st.info("Run src/run_viz.py to generate this chart.")
-
-with chart_tab2:
-    if os.path.exists("outputs/equal_opportunity.png"):
-        st.image("outputs/equal_opportunity.png", use_column_width=True)
-        st.caption("True Positive Rate per group. Ideal: equal TPR for all groups.")
-    else:
-        st.info("Run src/run_viz.py to generate this chart.")
-
-with chart_tab3:
     if os.path.exists("outputs/bias_summary.png"):
         st.image("outputs/bias_summary.png", use_column_width=True)
-        st.caption("Gap comparison before and after debiasing. Orange line = fairness threshold.")
-    else:
-        st.info("Run src/run_viz.py to generate this chart.")
 
+# ════════════════════════════════════════════════════════
+# TAB 3 — Model Comparison
+# ════════════════════════════════════════════════════════
+with tab3:
+    st.subheader("All Models — Side by Side")
 
-st.subheader(" Causal Model Comparison")
+    if os.path.exists("outputs/final_comparison.csv"):
+        comp = pd.read_csv("outputs/final_comparison.csv")
+        st.dataframe(comp.style.highlight_min(
+            subset=["Parity Gap", "EO Gap"], color="lightgreen"
+        ).highlight_max(
+            subset=["Accuracy"], color="lightblue"
+        ), use_container_width=True)
 
-# Load comparison results if available
-import os
-if os.path.exists("outputs/model_comparison.csv"):
-    comp_df = pd.read_csv("outputs/model_comparison.csv")
-    st.dataframe(comp_df, use_container_width=True)
+        best_fair = comp.loc[comp["Parity Gap"].idxmin(), "Model"]
+        best_acc  = comp.loc[comp["Accuracy"].idxmax(),   "Model"]
+        st.success(f" Fairest model: **{best_fair}**")
+        st.info(   f" Most accurate: **{best_acc}**")
 
-    # Highlight best model
-    best_fairness = comp_df.loc[comp_df["Parity Gap"].idxmin(), "Model"]
-    best_accuracy = comp_df.loc[comp_df["Accuracy"].idxmax(),   "Model"]
-    st.info(f" Fairest model: **{best_fairness}** | 🎯 Most accurate: **{best_accuracy}**")
+    img_col1, img_col2 = st.columns(2)
+    with img_col1:
+        if os.path.exists("outputs/final_comparison.png"):
+            st.image("outputs/final_comparison.png", use_column_width=True)
+    with img_col2:
+        if os.path.exists("outputs/tradeoff_scatter.png"):
+            st.image("outputs/tradeoff_scatter.png", use_column_width=True)
+            st.caption("Green arrow shows ideal direction — lower gap, "
+                       "higher accuracy.")
 
-col_a, col_b = st.columns(2)
-with col_a:
-    if os.path.exists("outputs/model_comparison.png"):
-        st.image("outputs/model_comparison.png", use_column_width=True)
-
-with col_b:
-    if os.path.exists("outputs/fairness_accuracy_tradeoff.png"):
-        st.image("outputs/fairness_accuracy_tradeoff.png", use_column_width=True)
-        st.caption("Bottom-left = fair AND accurate. Goal is to move models toward that corner.")
-
-# Model selector for live prediction
-st.subheader(" Choose Model for Prediction")
-selected_model = st.selectbox(
-    "Select model to use for predictions above",
-    ["Fair (Reweighted)", "Causal 1 (No Sex)", "Causal 2 (No Proxies)"]
-)
-st.caption(f"Currently using: **{selected_model}**")
+    if os.path.exists("outputs/bias_reduction.png"):
+        st.image("outputs/bias_reduction.png", use_column_width=True)
