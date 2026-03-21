@@ -1,0 +1,23 @@
+artifact_path: file:///E:/causal-fairness-credit-scoring/causal-fairness-credit-scoring/mlruns/2/models/m-f25a22976e144b4b9071917387b21040/artifacts
+flavors:
+  python_function:
+    env:
+      conda: conda.yaml
+      virtualenv: python_env.yaml
+    loader_module: mlflow.sklearn
+    model_path: model.pkl
+    predict_fn: predict
+    python_version: 3.10.11
+  sklearn:
+    code: null
+    pickled_model: model.pkl
+    serialization_format: cloudpickle
+    sklearn_version: 1.7.2
+    skops_trusted_types: null
+mlflow_version: 3.10.1
+model_id: m-f25a22976e144b4b9071917387b21040
+model_size_bytes: 3627374
+model_uuid: m-f25a22976e144b4b9071917387b21040
+prompts: null
+run_id: a5a316cb8a4b40a09db001d414e45303
+utc_time_created: '2026-03-21 04:21:44.090050'

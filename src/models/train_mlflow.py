@@ -71,7 +71,7 @@ with mlflow.start_run(run_name="logistic_regression"):
 
     mlflow.sklearn.log_model(lr, "logistic_model")
 
-    print(f"✅ LR Run logged — Accuracy: {lr_acc:.4f} | Parity Gap: {parity_gap:.4f}")
+    print(f" LR Run logged — Accuracy: {lr_acc:.4f} | Parity Gap: {parity_gap:.4f}")
 
 # ── MLflow: Random Forest Run ──────────────────────────────────────
 with mlflow.start_run(run_name="random_forest"):
@@ -106,7 +106,7 @@ with mlflow.start_run(run_name="random_forest"):
 
     mlflow.sklearn.log_model(rf, "random_forest_model")
 
-    print(f"✅ RF Run logged — Accuracy: {rf_acc:.4f} | Parity Gap: {parity_gap_rf:.4f}")
+    print(f" RF Run logged — Accuracy: {rf_acc:.4f} | Parity Gap: {parity_gap_rf:.4f}")
 
-print("\n✅ All runs logged to MLflow.")
+print("\n All runs logged to MLflow.")
 print("Run `mlflow ui` in terminal to view dashboard.")
