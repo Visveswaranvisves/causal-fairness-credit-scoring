@@ -3,7 +3,7 @@ import pandas as pd
 import numpy as np
 import joblib
 import shap
-
+from PIL import Image
 # ── Page config ──────────────────────────────────────────────
 st.set_page_config(page_title="Credit Fairness Dashboard", layout="wide")
 st.title("⚖️ Causal Fairness-Aware Credit Scoring")
@@ -95,3 +95,35 @@ with col2:
 # ── Dataset overview ─────────────────────────────────────────
 st.subheader("Dataset Overview")
 st.dataframe(df.head(10))
+
+import os
+from PIL import Image
+
+st.subheader("📊 Fairness Analysis Charts")
+
+chart_tab1, chart_tab2, chart_tab3 = st.tabs([
+    "Demographic Parity",
+    "Equal Opportunity",
+    "Bias Summary"
+])
+
+with chart_tab1:
+    if os.path.exists("outputs/demographic_parity.png"):
+        st.image("outputs/demographic_parity.png", use_column_width=True)
+        st.caption("Approval rates across gender groups. Ideal: bars at equal height.")
+    else:
+        st.info("Run src/run_viz.py to generate this chart.")
+
+with chart_tab2:
+    if os.path.exists("outputs/equal_opportunity.png"):
+        st.image("outputs/equal_opportunity.png", use_column_width=True)
+        st.caption("True Positive Rate per group. Ideal: equal TPR for all groups.")
+    else:
+        st.info("Run src/run_viz.py to generate this chart.")
+
+with chart_tab3:
+    if os.path.exists("outputs/bias_summary.png"):
+        st.image("outputs/bias_summary.png", use_column_width=True)
+        st.caption("Gap comparison before and after debiasing. Orange line = fairness threshold.")
+    else:
+        st.info("Run src/run_viz.py to generate this chart.")
