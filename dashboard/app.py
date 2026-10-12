@@ -1,3 +1,5 @@
+from pathlib import Path
+from html import escape
 import streamlit as st
 import pandas as pd
 import numpy as np
@@ -5,24 +7,25 @@ import joblib
 import os
 import json
 
-st.set_page_config(
-    page_title="Causal Fairness Credit Scoring",
-    page_icon="◈",
-    layout="wide"
-)
-
-# Fix working directory
-os.chdir(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-
-st.markdown('\n<style>\n.stApp{background:#f4f7fb;color:#16243a}\n[data-testid="stHeader"]{background:rgba(244,247,251,.96)}\n.block-container{padding-top:2.4rem;padding-bottom:2rem;max-width:1440px}\nh1,h2,h3{letter-spacing:-.035em;color:#16243a}\nh3{font-size:1.35rem!important}\n[data-testid="stSidebar"]{background:#fff;border-right:1px solid #e2e8f0}\n[data-testid="stSidebar"] .block-container{padding-top:2rem}\n[data-testid="stMetric"]{background:#fff;border:1px solid #e0e8f1;border-radius:16px;padding:19px 20px;box-shadow:0 4px 16px #172b4d05;min-height:118px}\n[data-testid="stMetricLabel"]{color:#5b6b82;font-size:.8rem}\n[data-testid="stMetricValue"]{font-size:clamp(1.35rem,2vw,2rem);font-weight:650;letter-spacing:-.04em}\n[data-testid="stCaptionContainer"]{color:#607087}\n[data-testid="stVerticalBlockBorderWrapper"]>div{border-radius:16px}\n[data-testid="stPlotlyChart"], [data-testid="stDataFrame"]{background:white;border:1px solid #e0e8f1;border-radius:16px;overflow:hidden}\n[data-baseweb="tab-list"]{gap:8px;background:#e9eef5;border-radius:12px;padding:5px;margin-bottom:22px}\nbutton[data-baseweb="tab"]{padding:10px 20px;border-radius:9px;height:44px}\nbutton[data-baseweb="tab"][aria-selected="true"]{background:white;color:#167e8b;box-shadow:0 2px 6px #172b4d10}\n[data-baseweb="tab-highlight"],[data-baseweb="tab-border"]{display:none}\n.stButton>button[kind="primary"],.stFormSubmitButton>button[kind="primary"]{background:#167e8b;border:0;border-radius:10px;min-height:46px;font-weight:650}\n.stButton>button,.stDownloadButton>button{border-radius:10px}\n[data-testid="stFileUploaderDropzone"]{border:1px dashed #91abc6;border-radius:16px;background:#edf4fb;padding:28px}\n[data-testid="stAlert"]{border-radius:12px}\n[data-testid="stSidebar"] [role="radiogroup"]{gap:4px}\n[data-testid="stSidebar"] [role="radiogroup"] label{padding:10px 12px;border-radius:10px}\n[data-testid="stSidebar"] [role="radiogroup"] label:has(input:checked){background:#e8f3f2;font-weight:600}\n.brand{display:flex;align-items:center;gap:10px;font-weight:750;font-size:21px;letter-spacing:-.7px;margin-bottom:22px}\n.brand-mark{background:#167e8b;color:white;display:inline-flex;align-items:center;justify-content:center;width:35px;height:35px;border-radius:10px;font-size:17px}\n.hero{background:linear-gradient(110deg,#112339,#203e57);color:white;border-radius:22px;padding:32px 36px;margin:8px 0 28px;position:relative;overflow:hidden;border:1px solid #314d66}\n.hero h1{color:white!important;font-size:clamp(2rem,3.5vw,3rem);font-weight:720;margin:8px 0 12px;padding:0;max-width:850px}\n.hero p{color:#c6d6e7;max-width:750px;line-height:1.6;margin:0}\n.eyebrow{color:#8de0cf;font-size:11px;letter-spacing:2px;font-weight:700;text-transform:uppercase}\n.chips{display:flex;gap:8px;flex-wrap:wrap;margin-top:22px}\n.chip{font-size:11px;padding:6px 11px;border:1px solid #536b80;border-radius:6px;color:#e2edf7}\n.empty{border:1px dashed #c6d3e0;background:#f9fbfd;border-radius:16px;padding:48px 26px;text-align:center;color:#66788f;min-height:235px}\n.empty strong{display:block;color:#243c55;font-size:19px;margin:14px 0 9px}\n.section-label{font-size:11px;font-weight:750;letter-spacing:1.5px;color:#167e8b;text-transform:uppercase;margin:4px 0 10px}\n.footer{border-top:1px solid #dce5ef;padding-top:18px;margin-top:36px;font-size:11px;color:#6a7b90;display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap}\n@media(max-width:768px){.block-container{padding:1.5rem 1rem}.hero{padding:25px 22px}.hero h1{font-size:2rem} [data-testid="stMetric"]{padding:15px;min-height:100px}[data-testid="stMetricValue"]{font-size:1.6rem}button[data-baseweb="tab"]{padding:8px 12px;font-size:12px}}\n</style>\n', unsafe_allow_html=True)
-st.markdown('<div class="brand"><span class="brand-mark">C</span>Credit Scoring / Fairness Lab</div><div class="hero"><div class="eyebrow">Responsible AI workspace</div><h1>Understand risk. Examine fairness.</h1><p>Explore credit-risk estimates and compare how modelling choices affect performance and demographic parity.</p><div class="chips"><span class="chip">4 MODEL OPTIONS</span><span class="chip">GERMAN CREDIT DATA</span><span class="chip">RESEARCH DEMO</span></div></div>', unsafe_allow_html=True)
-st.caption('Portfolio research only. Outputs are model estimates, not lending decisions.')
-
-# Feature columns used during training
-FEATURE_COLS = ['Age', 'Job', 'Housing', 'Saving accounts',
-                'Checking account', 'Credit amount', 'Duration', 'Purpose']
-
-# Load assets
+st.set_page_config(page_title='Credit Scoring | Risk & Fairness',page_icon='◉',layout='wide')
+os.chdir(Path(__file__).resolve().parents[1])
+st.markdown('''<style>
+.stApp{background:#eeede7;color:#202720}.block-container{max-width:1440px;padding:2.4rem 2.4rem 3rem}
+[data-testid="stHeader"]{background:#eeede7}[data-testid="stSidebar"]{background:#eeede7;border-right:1px solid #dedfd6;width:230px!important}
+h1,h2,h3{color:#202720;letter-spacing:-.04em}h1{font-size:2.15rem!important;font-weight:550!important}h3{font-size:1.12rem!important}
+[data-testid="stVerticalBlockBorderWrapper"]>div{background:#fff;border-radius:22px;border-color:transparent!important;padding:12px}
+[data-testid="stMetric"]{background:white;border-radius:20px;padding:20px 22px;min-height:112px}
+[data-testid="stMetricLabel"]{color:#737c72;font-size:12px}[data-testid="stMetricValue"]{font-size:1.8rem;font-weight:650;letter-spacing:-.04em}
+[data-testid="stSidebar"] [role="radiogroup"] label{padding:12px 15px;border-radius:30px;margin-bottom:7px;background:#ffffff70}
+[data-testid="stSidebar"] [role="radiogroup"] label:has(input:checked){background:#253e34;color:white}
+.stButton>button[kind="primary"],.stFormSubmitButton>button[kind="primary"]{background:#385e4c;color:white;border:0;border-radius:12px;min-height:46px}
+[data-testid="stForm"]{border:0;padding:0}[data-testid="stCaptionContainer"]{color:#707b70}
+.brand{display:flex;align-items:center;gap:12px;margin-bottom:35px;font-weight:650;font-size:17px}.sun{font-size:40px;color:#42664e;line-height:1}
+.kicker{color:#778377;font-size:10px;letter-spacing:1.8px;text-transform:uppercase;font-weight:700}.subtle{color:#798176;font-size:12px}.gauge-card{text-align:center;padding:8px 10px 0}.gauge-card svg{max-width:260px;width:100%;display:block;margin:auto}
+.pill{display:inline-block;background:#e7eee8;color:#41634f;padding:5px 10px;border-radius:20px;font-size:11px}.wallet{border-radius:18px;padding:24px;background:linear-gradient(120deg,#4e725e,#829c8a);color:white;min-height:146px;margin:8px 0 18px}.wallet .subtle{color:#e0e9e0}.wallet strong{display:block;font-size:26px;margin:15px 0 6px;letter-spacing:-1px}.empty{padding:32px 15px;text-align:center;color:#798176;font-size:13px}.divider{height:1px;background:#e8ebe4;margin:20px 0}.bottom{font-size:11px;color:#7e867b;margin-top:25px}
+@media(max-width:768px){.block-container{padding:1.6rem 1rem}h1{font-size:1.8rem!important}[data-testid="stMetric"]{padding:15px}[data-testid="stMetricValue"]{font-size:1.5rem}}
+</style>''',unsafe_allow_html=True)
+FEATURE_COLS = ['Age','Job','Housing','Saving accounts','Checking account','Credit amount','Duration','Purpose']
 @st.cache_resource
 def load_assets():
     assets = {}
@@ -54,10 +57,6 @@ def load_data():
         df.drop("Unnamed: 0", axis=1, inplace=True)
     return df
 
-assets = load_assets()
-df     = load_data()
-
-
 def prepare_input(input_dict, drop_cols=None):
     """Prepare input for prediction, aligned with training columns."""
     input_df = pd.DataFrame([input_dict])[FEATURE_COLS]
@@ -75,7 +74,6 @@ def prepare_input(input_dict, drop_cols=None):
 
     return input_enc
 
-
 def predict(input_enc, model, imputer, scaler, sex=None, thresholds=None):
     """Run prediction and return label + probability."""
     X = scaler.transform(imputer.transform(input_enc))
@@ -91,204 +89,98 @@ def predict(input_enc, model, imputer, scaler, sex=None, thresholds=None):
 
     pred = "good" if prob_good >= threshold else "bad"
     return pred, prob_good
+assets=load_assets()
+df=load_data()
+with st.sidebar:
+ st.markdown('<div class="brand"><span class="sun">✺</span><span>Credit Scoring<br><span class="subtle">Risk & fairness workspace</span></span></div>',unsafe_allow_html=True)
+ page=st.radio('Workspace',['Assessment','Fairness audit','Model comparison'],label_visibility='collapsed')
+ st.divider()
+ st.caption('GERMAN CREDIT DATASET')
+ st.write(f'{len(df):,} reference records')
+ st.caption('Portfolio research · No lending decisions')
+ st.markdown('<div class="bottom">Visveswaran V<br>Responsible AI research</div>',unsafe_allow_html=True)
 
+st.markdown('<div class="kicker">Credit intelligence / '+escape(page)+'</div>',unsafe_allow_html=True)
+st.title({'Assessment':'A clearer view of credit risk.','Fairness audit':'Look beyond the headline score.','Model comparison':'Compare the trade-offs.'}[page])
+st.caption({'Assessment':'Build an applicant profile and examine how each model evaluates it.','Fairness audit':'Reference-label distributions and saved model diagnostics, side by side.','Model comparison':'Saved evaluation results from the project’s research pipeline.'}[page])
 
-# Tabs
-tab1, tab2, tab3 = st.tabs([
-    "Live Prediction",
-    "Fairness Analysis",
-    "Model Comparison"
-])
-
-# ════════════════════════════════════════
-# TAB 1 — Live Prediction
-# ════════════════════════════════════════
-with tab1:
-    st.subheader("Credit risk workspace")
-    col_input, col_result = st.columns([1, 1])
-
-    with col_input:
-        st.markdown('<div class="section-label">01 / Applicant profile</div>', unsafe_allow_html=True)
-        left, right = st.columns(2)
-        with left:
-            age = st.slider("Age", 18, 75, 30)
-            sex = st.selectbox("Sex", ["male", "female"])
-            housing = st.selectbox("Housing", ["own", "free", "rent"])
-            saving_account = st.selectbox("Saving Accounts", ["little", "moderate", "quite rich", "rich"])
-        with right:
-            duration = st.slider("Loan Duration (months)", 6, 72, 24)
-            job = st.selectbox("Job Level", [0, 1, 2, 3])
-            credit_amount = st.number_input("Credit Amount (€)", 100, 20000, 2500)
-            checking = st.selectbox("Checking Account", ["little", "moderate", "rich"])
-        purpose = st.selectbox("Purpose", ["car", "furniture/equipment", "radio/TV", "education", "business"])
-        st.markdown('<div class="section-label">02 / Model selection</div>', unsafe_allow_html=True)
-        model_choice = st.selectbox("Model to use", ["Baseline", "Fair (Threshold)", "Causal 1 (No Sex)", "Causal 2 (No Proxies)"])
-
-    with col_result:
-        st.markdown('<div class="section-label">03 / Model output</div>', unsafe_allow_html=True)
-        st.caption("Adjust the applicant profile, choose a model, then run the estimate.")
-        if st.button("Run Prediction", type="primary", use_container_width=True):
-            input_dict = {
-                "Age":              age,
-                "Job":              job,
-                "Housing":          housing,
-                "Saving accounts":  saving_account,
-                "Checking account": checking,
-                "Credit amount":    credit_amount,
-                "Duration":         duration,
-                "Purpose":          purpose
-            }
-
-            try:
-                model   = assets.get("model")
-                imputer = assets.get("imputer")
-                scaler  = assets.get("scaler")
-
-                if model_choice == "Baseline":
-                    input_enc = prepare_input(input_dict)
-                    pred, prob = predict(input_enc, model, imputer, scaler)
-
-                elif model_choice == "Fair (Threshold)":
-                    input_enc  = prepare_input(input_dict)
-                    thresholds = assets.get(
-                        "thresholds", {"female": 0.45, "male": 0.50}
-                    )
-                    pred, prob = predict(
-                        input_enc, model, imputer, scaler,
-                        sex=sex, thresholds=thresholds
-                    )
-
-                elif model_choice == "Causal 1 (No Sex)":
-                    input_enc = prepare_input(input_dict, drop_cols=["Sex_male"])
-                    m = assets.get("causal1", model)
-                    i = assets.get("imputer_c1", imputer)
-                    s = assets.get("scaler_c1",  scaler)
-                    pred, prob = predict(input_enc, m, i, s)
-
-                elif model_choice == "Causal 2 (No Proxies)":
-                    drop_cols = ["Sex_male", "Purpose_car", "Purpose_education"]
-                    input_enc = prepare_input(input_dict, drop_cols=drop_cols)
-                    m = assets.get("causal2", model)
-                    i = assets.get("imputer_c2", imputer)
-                    s = assets.get("scaler_c2",  scaler)
-                    pred, prob = predict(input_enc, m, i, s)
-
-                # Display results
-                st.metric("Good-credit model score", f"{prob:.2%}")
-                st.progress(float(prob))
-                st.caption("Model score; not a calibrated approval probability.")
-
-                if pred == "good":
-                    st.success("Model classification: good credit risk")
-                else:
-                    st.error("Model classification: high credit risk")
-
-                st.info(f"Model used: **{model_choice}**")
-
-                # Show fairness note for fair model
-                if model_choice == "Fair (Threshold)":
-                    thresh = assets.get(
-                        "thresholds", {"female": 0.45, "male": 0.50}
-                    )
-                    st.caption(
-                        f"Fair threshold applied: "
-                        f"female={thresh['female']}, male={thresh['male']}"
-                    )
-
-            except Exception as e:
-                st.error(f"Prediction error: {e}")
-                st.exception(e)
-        else:
-            st.markdown('<div class="empty"><span style="font-size:36px">◈</span><strong>Your estimate appears here</strong>Compare the same profile across models to explore how the output changes.</div>', unsafe_allow_html=True)
-
-
-# ════════════════════════════════════════
-# TAB 2 — Fairness Analysis
-# ════════════════════════════════════════
-with tab2:
-    st.subheader("Fairness Metrics Across Gender Groups")
-
-    male_rate   = (df[df["Sex"] == "male"]["Risk"] == "good").mean()
-    female_rate = (df[df["Sex"] == "female"]["Risk"] == "good").mean()
-    gap         = abs(male_rate - female_rate)
-
-    m1, m2, m3 = st.columns(3)
-    m1.metric("Male Approval Rate",   f"{male_rate:.1%}")
-    m2.metric("Female Approval Rate", f"{female_rate:.1%}")
-    m3.metric(
-        "Parity Gap", f"{gap:.4f}",
-        delta="High" if gap > 0.05 else "Low"
-    )
-
-    st.divider()
-
-    chart_col1, chart_col2 = st.columns(2)
-    with chart_col1:
-        for path in ["outputs/parity_comparison.png",
-                     "outputs/demographic_parity.png"]:
-            if os.path.exists(path):
-                st.image(path, use_container_width=True)
-                break
-
-    with chart_col2:
-        for path in ["outputs/accuracy_fairness_tradeoff.png",
-                     "models/fairness_by_sex.png"]:
-            if os.path.exists(path):
-                st.image(path, use_container_width=True)
-                break
-
-    if os.path.exists("notebooks/outputs/shap_gender_comparison.png"):
-        st.subheader("SHAP Feature Importance by Gender")
-        st.image("notebooks/outputs/shap_gender_comparison.png",
-                 use_container_width=True)
-    elif os.path.exists("notebooks/outputs/shap_importance.png"):
-        st.subheader("SHAP Feature Importance")
-        st.image("notebooks/outputs/shap_importance.png", use_container_width=True)
-
-# ════════════════════════════════════════
-# TAB 3 — Model Comparison
-# ════════════════════════════════════════
-with tab3:
-    st.subheader("All Models — Side by Side")
-
-    csv_path = "outputs/model_comparison.csv"
-    if os.path.exists(csv_path):
-        comp = pd.read_csv(csv_path)
-        st.dataframe(
-            comp.style.highlight_min(
-                subset=["Parity Gap", "EO Gap"], color="lightgreen"
-            ).highlight_max(
-                subset=["Accuracy"], color="lightblue"
-            ),
-            use_container_width=True
-        )
-
-        best_fair = comp.loc[comp["Parity Gap"].idxmin(), "Model"]
-        best_acc  = comp.loc[comp["Accuracy"].idxmax(),   "Model"]
-        st.success(f"Fairest model: **{best_fair}**")
-        st.info(   f"Most accurate: **{best_acc}**")
-    else:
-        st.warning(
-            "Run day6_causal_fairness_final.ipynb first "
-            "to generate comparison data."
-        )
-
-    if os.path.exists("outputs/model_comparison.png"):
-        st.image("outputs/model_comparison.png", use_container_width=True)
-
-    # Summary insight
-    st.divider()
-    st.subheader("Key Findings")
-    st.markdown("""
-    - **Baseline** — 69% accuracy, demographic parity gap of 0.038
-    - **Fair (Threshold)** — 25% bias reduction with only 1% accuracy drop
-    - **Causal 1 (No Sex)** — Removing Sex column had no effect;
-      bias comes from correlated proxy features
-    - **Causal 2 (No Proxies)** — Removing proxies increased bias,
-      showing those features were partially corrective
-
-    > *Simply removing sensitive attributes does not guarantee fairness.
-    Threshold adjustment proved most effective for this dataset.*
-    """)
-
-st.markdown('<div class="footer"><span>Credit Scoring · Built by Visveswaran V</span><span>Causal Fairness Credit Scoring · Research portfolio</span></div>', unsafe_allow_html=True)
+if page=='Assessment':
+ top=st.columns(4)
+ top[0].metric('Reference applicants',f'{len(df):,}')
+ top[1].metric('Model options','4')
+ top[2].metric('Reference good-credit rate',f'{df.Risk.eq("good").mean():.1%}')
+ top[3].metric('Prediction target','Credit risk')
+ st.write('')
+ left,right=st.columns([1.6,1],gap='medium')
+ with left,st.container(border=True):
+  st.subheader('Applicant details')
+  st.caption('Inputs are used for this assessment only.')
+  with st.form('applicant_form'):
+   a,b=st.columns(2)
+   age=a.number_input('Age',18,75,30)
+   sex=b.selectbox('Sex',['male','female'])
+   amount=a.number_input('Credit amount (€)',100,20000,2500)
+   duration=b.number_input('Duration (months)',6,72,24)
+   job=a.selectbox('Job level',[0,1,2,3])
+   housing=b.selectbox('Housing',['own','free','rent'])
+   saving=a.selectbox('Saving accounts',['little','moderate','quite rich','rich'])
+   checking=b.selectbox('Checking account',['little','moderate','rich'])
+   purpose=a.selectbox('Purpose',['car','furniture/equipment','radio/TV','education','business'])
+   choice=b.selectbox('Model',['Baseline','Fair (Threshold)','Causal 1 (No Sex)','Causal 2 (No Proxies)'])
+   submit=st.form_submit_button('Calculate assessment →',type='primary',use_container_width=True)
+  if submit:
+   try:
+    inputs={'Age':age,'Job':job,'Housing':housing,'Saving accounts':saving,'Checking account':checking,'Credit amount':amount,'Duration':duration,'Purpose':purpose}
+    keys=('model','imputer','scaler');drops=None
+    if choice=='Causal 1 (No Sex)':keys=('causal1','imputer_c1','scaler_c1');drops=['Sex_male']
+    if choice=='Causal 2 (No Proxies)':keys=('causal2','imputer_c2','scaler_c2');drops=['Sex_male','Purpose_car','Purpose_education']
+    thresholds=assets.get('thresholds',{'female':.45,'male':.50}) if choice=='Fair (Threshold)' else None
+    label,score=predict(prepare_input(inputs,drops),*(assets[k] for k in keys),sex=sex,thresholds=thresholds)
+    st.session_state.assessment={'label':label,'score':float(score),'model':choice,'amount':amount,'duration':duration,'threshold':thresholds.get(sex,.5) if thresholds else .5}
+   except Exception as exc:
+    st.session_state.pop('assessment',None)
+    st.error(f'Assessment failed: {exc}')
+ with right:
+  with st.container(border=True):
+   st.subheader('Assessment summary')
+   r=st.session_state.get('assessment')
+   value=f'{r["score"]:.1%}' if r else '—'
+   length=314*(r['score'] if r else 0)
+   st.markdown(f'<div class="gauge-card"><svg viewBox="0 0 260 170" role="img" aria-label="Good-credit model score {value}"><path d="M30 130 A100 100 0 0 1 230 130" fill="none" stroke="#e8eee8" stroke-width="24"/><path d="M30 130 A100 100 0 0 1 230 130" fill="none" stroke="#729782" stroke-width="24" stroke-dasharray="{length} 314"/><text x="130" y="115" text-anchor="middle" font-family="Arial" font-size="38" fill="#263d30">{value}</text><text x="130" y="151" text-anchor="middle" font-family="Arial" font-size="11" fill="#748170">GOOD-CREDIT MODEL SCORE</text></svg></div>',unsafe_allow_html=True)
+   if r:
+    st.markdown(f'<span class="pill">{escape(r["label"].title())} credit risk · Model classification</span>',unsafe_allow_html=True)
+    st.caption(f'{r["model"]} · Threshold {r["threshold"]:.2f}')
+    st.caption('Shows the last submitted profile. Recalculate after editing inputs.')
+   else:st.markdown('<div class="empty">Complete the profile and calculate<br>to view the model estimate.</div>',unsafe_allow_html=True)
+  with st.container(border=True):
+   st.subheader('Credit request')
+   amount_text=f'€ {r["amount"]:,.0f}' if r else 'Awaiting assessment'
+   term=f'{r["duration"]} month term' if r else 'Submit the form to create a summary'
+   st.markdown(f'<div class="wallet"><span class="subtle">RESEARCH ASSESSMENT</span><strong>{amount_text}</strong><span>{term}</span></div>',unsafe_allow_html=True)
+   st.caption('Model scores are not calibrated approval probabilities. This demo does not approve or deny credit.')
+else:
+ if page=='Fairness audit':
+  male=df.loc[df.Sex.eq('male'),'Risk'].eq('good').mean();female=df.loc[df.Sex.eq('female'),'Risk'].eq('good').mean()
+  a,b,c=st.columns(3);a.metric('Male reference good-credit rate',f'{male:.1%}');b.metric('Female reference good-credit rate',f'{female:.1%}');c.metric('Absolute reference-label gap',f'{abs(male-female):.4f}')
+  st.caption('These rates describe dataset labels, not model approval decisions or a live fairness audit.')
+  a,b=st.columns(2)
+  for col,path,title in [(a,'outputs/demographic_parity.png','Saved demographic parity'),(b,'models/fairness_by_sex.png','Saved group comparison')]:
+   with col,st.container(border=True):
+    st.subheader(title)
+    if Path(path).exists():st.image(path,use_container_width=True)
+  with st.expander('Feature attribution by demographic group'):
+   path=Path('notebooks/outputs/shap_gender_comparison.png')
+   if path.exists():st.image(str(path),use_container_width=True)
+ else:
+  comparison=pd.read_csv('outputs/model_comparison.csv')
+  a,b,c=st.columns(3)
+  a.metric('Highest saved accuracy',f'{comparison.Accuracy.max():.1%}')
+  b.metric('Smallest saved parity gap',f'{comparison["Parity Gap"].min():.4f}')
+  c.metric('Models evaluated',str(len(comparison)))
+  with st.container(border=True):
+   st.subheader('Performance & fairness')
+   st.dataframe(comparison,hide_index=True,use_container_width=True)
+   st.caption('Higher accuracy and lower gaps are preferred on these metrics. The table contains saved evaluation results; it does not update with applicant inputs.')
+   if Path('outputs/model_comparison.png').exists():st.image('outputs/model_comparison.png',use_container_width=True)
+   st.download_button('Download comparison',comparison.to_csv(index=False),'credit_model_comparison.csv','text/csv')
+st.markdown('<div class="bottom">Causal Fairness-Aware Credit Scoring · Research portfolio · German Credit Dataset</div>',unsafe_allow_html=True)
