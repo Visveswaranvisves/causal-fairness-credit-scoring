@@ -13,7 +13,6 @@ st.markdown('''<style>
 .stApp{background:#eeede7;color:#202720}.block-container{max-width:1440px;padding:2.4rem 2.4rem 3rem}
 [data-testid="stHeader"]{background:#eeede7}[data-testid="stSidebar"]{background:#eeede7;border-right:1px solid #dedfd6;width:230px!important}
 h1,h2,h3{color:#202720;letter-spacing:-.04em}h1{font-size:2.15rem!important;font-weight:550!important}h3{font-size:1.12rem!important}
-[data-testid="stVerticalBlockBorderWrapper"]>div{background:#fff;border-radius:22px;border-color:transparent!important;padding:12px}
 [data-testid="stMetric"]{background:white;border-radius:20px;padding:20px 22px;min-height:112px}
 [data-testid="stMetricLabel"]{color:#737c72;font-size:12px}[data-testid="stMetricValue"]{font-size:1.8rem;font-weight:650;letter-spacing:-.04em}
 [data-testid="stSidebar"] [role="radiogroup"] label{padding:12px 15px;border-radius:30px;margin-bottom:7px;background:#ffffff70}
@@ -24,6 +23,27 @@ h1,h2,h3{color:#202720;letter-spacing:-.04em}h1{font-size:2.15rem!important;font
 .kicker{color:#778377;font-size:10px;letter-spacing:1.8px;text-transform:uppercase;font-weight:700}.subtle{color:#798176;font-size:12px}.gauge-card{text-align:center;padding:8px 10px 0}.gauge-card svg{max-width:260px;width:100%;display:block;margin:auto}
 .pill{display:inline-block;background:#e7eee8;color:#41634f;padding:5px 10px;border-radius:20px;font-size:11px}.wallet{border-radius:18px;padding:24px;background:linear-gradient(120deg,#4e725e,#829c8a);color:white;min-height:146px;margin:8px 0 18px}.wallet .subtle{color:#e0e9e0}.wallet strong{display:block;font-size:26px;margin:15px 0 6px;letter-spacing:-1px}.empty{padding:32px 15px;text-align:center;color:#798176;font-size:13px}.divider{height:1px;background:#e8ebe4;margin:20px 0}.bottom{font-size:11px;color:#7e867b;margin-top:25px}
 @media(max-width:768px){.block-container{padding:1.6rem 1rem}h1{font-size:1.8rem!important}[data-testid="stMetric"]{padding:15px}[data-testid="stMetricValue"]{font-size:1.5rem}}
+
+/* Scope surfaces to named cards, never to Streamlit's structural wrappers. */
+[class*="st-key-panel_"]{background:#fff;border:1px solid #e0e2dc!important;border-radius:20px;padding:20px!important;box-sizing:border-box;min-width:0}
+[data-testid="stMetric"]{box-sizing:border-box;min-width:0;width:100%}
+[data-testid="stSidebarUserContent"]{padding:1.5rem 1rem}
+[data-testid="stCaptionContainer"] p{font-size:13px;line-height:1.5}
+[data-testid="stMainBlockContainer"]{width:100%;max-width:1600px;padding:2.8rem 2rem 2rem}
+[data-testid="stHorizontalBlock"]{min-width:0}
+[data-testid="stColumn"]{min-width:0}
+@media(max-width:768px){[data-testid="stMainBlockContainer"]{padding:2rem 1rem}[class*="st-key-panel_"]{padding:16px!important}}
+
+[data-testid="stSidebar"] [role="radiogroup"] label:has(input:checked) p{color:#fff!important}
+[data-testid="stSidebar"] [role="radiogroup"] label p{font-size:14px}
+[data-testid="stMetric"]{padding:16px 18px;min-height:94px;border:1px solid #e1e4dc;border-radius:16px}
+[data-testid="stMetricValue"]{font-size:1.65rem}
+[data-testid="stForm"] [data-testid="stVerticalBlock"]{gap:.65rem}
+.brand{margin-bottom:24px;font-size:17px;gap:9px}.brand .subtle{font-size:11px}
+.empty{padding:16px 8px;color:#586554}.subtle{color:#596556}
+.gauge-card svg{max-width:225px}.wallet{min-height:120px;padding:20px;margin:4px 0 8px}
+h1{font-size:2rem!important}.bottom{color:#586554}
+
 </style>''',unsafe_allow_html=True)
 FEATURE_COLS = ['Age','Job','Housing','Saving accounts','Checking account','Credit amount','Duration','Purpose']
 @st.cache_resource
@@ -110,9 +130,8 @@ if page=='Assessment':
  top[1].metric('Model options','4')
  top[2].metric('Reference good-credit rate',f'{df.Risk.eq("good").mean():.1%}')
  top[3].metric('Prediction target','Credit risk')
- st.write('')
  left,right=st.columns([1.6,1],gap='medium')
- with left,st.container(border=True):
+ with left,st.container(border=False,key="panel_1"):
   st.subheader('Applicant details')
   st.caption('Inputs are used for this assessment only.')
   with st.form('applicant_form'):
@@ -141,7 +160,7 @@ if page=='Assessment':
     st.session_state.pop('assessment',None)
     st.error(f'Assessment failed: {exc}')
  with right:
-  with st.container(border=True):
+  with st.container(border=False,key="panel_2"):
    st.subheader('Assessment summary')
    r=st.session_state.get('assessment')
    value=f'{r["score"]:.1%}' if r else '—'
@@ -152,7 +171,7 @@ if page=='Assessment':
     st.caption(f'{r["model"]} · Threshold {r["threshold"]:.2f}')
     st.caption('Shows the last submitted profile. Recalculate after editing inputs.')
    else:st.markdown('<div class="empty">Complete the profile and calculate<br>to view the model estimate.</div>',unsafe_allow_html=True)
-  with st.container(border=True):
+  with st.container(border=False,key="panel_3"):
    st.subheader('Credit request')
    amount_text=f'€ {r["amount"]:,.0f}' if r else 'Awaiting assessment'
    term=f'{r["duration"]} month term' if r else 'Submit the form to create a summary'
@@ -165,7 +184,7 @@ else:
   st.caption('These rates describe dataset labels, not model approval decisions or a live fairness audit.')
   a,b=st.columns(2)
   for col,path,title in [(a,'outputs/demographic_parity.png','Saved demographic parity'),(b,'models/fairness_by_sex.png','Saved group comparison')]:
-   with col,st.container(border=True):
+   with col,st.container(border=False,key="panel_"+title):
     st.subheader(title)
     if Path(path).exists():st.image(path,use_container_width=True)
   with st.expander('Feature attribution by demographic group'):
@@ -177,7 +196,7 @@ else:
   a.metric('Highest saved accuracy',f'{comparison.Accuracy.max():.1%}')
   b.metric('Smallest saved parity gap',f'{comparison["Parity Gap"].min():.4f}')
   c.metric('Models evaluated',str(len(comparison)))
-  with st.container(border=True):
+  with st.container(border=False,key="panel_5"):
    st.subheader('Performance & fairness')
    st.dataframe(comparison,hide_index=True,use_container_width=True)
    st.caption('Higher accuracy and lower gaps are preferred on these metrics. The table contains saved evaluation results; it does not update with applicant inputs.')
